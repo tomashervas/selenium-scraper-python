@@ -1,0 +1,46 @@
+datasource db {
+  // could be postgresql or mysql
+  provider = "sqlite"
+  url      = "file:dev.db"
+}
+
+generator db {
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = 5
+}
+
+model User {
+  id         String   @id @default(cuid())
+  name      String
+  email     String @unique
+  products  Product[]
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([email])
+}
+
+model Product {
+  id         String   @id @default(cuid())
+  shopId     String   @unique
+  name      String
+  imgUrl    String
+  users      User[]
+  prices    PriceProduct[]
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([shopId])
+}
+
+model PriceProduct {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product @relation(fields: [productId], references: [id])
+  price      Float
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([productId])
+}
