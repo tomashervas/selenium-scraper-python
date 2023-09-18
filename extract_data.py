@@ -23,10 +23,10 @@ def extract_product(url):
         # Navegar a la URL
         driver.get(url)
         # driver.maximize_window()
-        time.sleep(2)
+        # time.sleep(2)
         WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.ID, "sp-cc-accept"))).click()
  
-        time.sleep(3)
+        # time.sleep(3)
         title_element = driver.find_element(By.ID, "productTitle")
         title = title_element.text
         product_id_element = driver.find_element(By.ID, "corePrice_feature_div")

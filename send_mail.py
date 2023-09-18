@@ -1,41 +1,40 @@
-import os
-from dotenv import load_dotenv
 import smtplib
-from email.message import EmailMessage
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
-load_dotenv()
+   
+def send_mail(sender, password, receiver, subject, body):
+    """
+    Sends an email using the provided sender, password, receiver, subject, and body.
+    
+    Args:
+        sender (str): The email address of the sender.
+        password (str): The password associated with the sender's email address.
+        receiver (str): The email address of the receiver.
+        subject (str): The subject line of the email.
+        body (str): The body of the email.
+    """ 
+    sender_email = sender
+    sender_password = password
+    receiver_email = receiver
 
-# Configura tus credenciales
-sender_email = os.getenv("SENDER_EMAIL")
-sender_password = os.getenv("PASSMAIL")
-receiver_email = os.getenv("RECEIVER_EMAIL")
+    mail_body = body
 
-cuerpo_correo = """
-Hola,
+    em = MIMEMultipart()
 
-Este es un ejemplo de correo electrónico.
+    em['From'] = sender_email
+    em['To'] = receiver_email
+    em['Subject'] = subject
+    em.attach(MIMEText(mail_body, 'html'))
 
-Saludos
-"""
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.sendmail(sender_email, receiver_email, em.as_string())
+        print(f"Correo electrónico enviado correctamente a {receiver_email}")
+    except Exception as e:
+        print(f"No se pudo enviar el correo: {str(e)}")
+        quit()
 
-em = EmailMessage()
-
-em['From'] = sender_email
-em['To'] = receiver_email
-em['Subject'] = 'Asunto del correo'
-em.set_content(cuerpo_correo)
-
-# Establece una conexión con el servidor SMTP de Gmail
-try:
-    server = smtplib.SMTP('smtp.gmail.com', 587)
-    server.starttls()
-    server.login(sender_email, sender_password)
-    server.sendmail(sender_email, receiver_email, em.as_string())
-    print(f"Correo electrónico enviado correctamente a {receiver_email}")
-except Exception as e:
-    print(f"No se pudo enviar el correo: {str(e)}")
-    quit()
-
-
-# Cierra la conexión con el servidor SMTP
-server.quit()
+    server.quit()
