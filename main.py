@@ -20,80 +20,81 @@ sheet_id = os.getenv("SHEET_ID")
 try:
     df = pd.read_csv(sheet_base_url + sheet_id + "/export?format=csv", sep=",")
     urls_list = list(df.values.flatten().tolist())
-    random.shuffle(urls_list)
+    # random.shuffle(urls_list)
 
 except Exception as e:
     print(f'No se pudo leer la hoja de datos: {str(e)}')
 
 async def main():
     products_list_names = []
+    products_file_names = []
+
     today = datetime.date.today().isoweekday()
-    #products_list = []
-    products_list = [
-        {"product_id": "B00CWB45T2", "price": 45},
-        {"product_id": "B07VDLG8LR", "price": 63.5},
-        {"product_id": "B0713WPGLL", "price": 102.0},
-    ]
-    products_list_db = []
+    products_list = []
+    # products_list = [
+    #     {"product_id": "B00CWB45T2", "price": 45},
+    #     {"product_id": "B07VDLG8LR", "price": 63.5},
+    #     {"product_id": "B0713WPGLL", "price": 102.0},
+    # ]
 
-
-    # for url in urls_list:
-    #     product = extract_product(url)
-    #     products_list.append(product)
-    #     print(product)
+    for url in urls_list:
+        product = extract_product(url)
+        products_list.append(product)
+        print(product)
 
     db = Prisma()
     await db.connect()
 
-    # user1 = await db.user.create({
-    #     "name": "Tomas",
-    #     "email": os.getenv("SENDER_EMAIL")
-    # })
-
-    # print(f'created post: {user1.model_dump_json(indent=2)}')
-
     user1 = await db.user.find_unique(where={
         "email": os.getenv("SENDER_EMAIL")
     })
-    assert user1 is not None
-    print(f'found user: {user1.name}')
+    
+    if user1 is not None:
+        print(f'found user: {user1.name}')
+    else:
+        user1 = await db.user.create({
+            "name": os.getenv("USER_NAME"),
+            "email": os.getenv("SENDER_EMAIL")
+        })
+        print(f'created user: {user1.model_dump_json(indent=2)}')
 
     for product in products_list:
         prod = await db.product.find_unique(where={
             "shopId": product["product_id"]
         },include={"prices": True} )
 
-        # if prod: 
-        #     print(f'ya estaba el producto con shopId {prod.shopId}')
-        #     new_price = await db.priceproduct.create(
-        #         data={
-        #             "price": product["price"],
-        #             "product": {
-        #                 "connect": {
-        #                     "id": prod.id
-        #                 }
-        #             }
-        #         })
-        #     print(f'created price: {new_price.price}, date: {time.strftime("%d-%m-%Y %H:%M", new_price.created_at.timetuple())}')
+        if prod: 
+            print(f'ya estaba el producto con shopId {prod.shopId}')
+            new_price = await db.priceproduct.create(
+                data={
+                    "price": product["price"],
+                    "product": {
+                        "connect": {
+                            "id": prod.id
+                        }
+                    }
+                })
+            print(f'created price: {new_price.price}, date: {time.strftime("%d-%m-%Y %H:%M", new_price.created_at.timetuple())}')
         
-        # else:
-        #     new_product = await db.product.create({
-        #         "name": product["title"],
-        #         "imgUrl": product["img"],
-        #         "shopId": product["product_id"],
-        #         "users": {
-        #             "connect": [{
-        #                 "id": user1.id
-        #             }]
-        #         },
-        #         "prices":{
-        #             "create": [{
-        #                 "price": product["price"],
-        #             }]
-        #         }
-        #     })
-        #     print(f'created product: {new_product.model_dump_json(indent=2)}')
-        last_price = prod.prices[-1]
+        else:
+            new_product = await db.product.create({
+                "name": product["title"],
+                "imgUrl": product["img"],
+                "shopId": product["product_id"],
+                "users": {
+                    "connect": [{
+                        "id": user1.id
+                    }]
+                },
+                "prices":{
+                    "create": [{
+                        "price": product["price"],
+                    }]
+                }
+            })
+            print(f'created product: {new_product.model_dump_json(indent=2)}')
+
+        last_price = prod.prices[-1] if prod.prices else 0
         print(f'last price of {prod.name}: {last_price.price} date: {time.strftime("%d-%m-%Y %H:%M", last_price.created_at.timetuple())}')
 
         if product["price"] < last_price.price:
@@ -109,7 +110,7 @@ async def main():
         else:
             print (f'El precio del producto {prod.name} no ha bajado')
 
-        if today == 2:
+        if today == 3:
             price_list = []
             date_list = []
             for price in prod.prices:
@@ -121,6 +122,8 @@ async def main():
             data = pd.DataFrame({'x': date_list,
                         'y': price_list})
             # print(data)
+            yrange = [min(price_list) - (min(price_list) * 0.2), max(price_list) + (max(price_list) * 0.2)]
+            print("yrange",yrange)
 
             fig = px.line(data_frame=data,
                         x = 'x',
@@ -139,7 +142,8 @@ async def main():
                 paper_bgcolor="rgba(0, 0, 0, 0)",
                 xaxis_showgrid=False,
                 yaxis_showgrid=False,
-                margin=dict(t=20)
+                margin=dict(t=20),
+                yaxis_range=yrange
             )
             # fig.show()
             if not os.path.exists("images"):
@@ -147,15 +151,17 @@ async def main():
 
             fig.write_image(f"images/prices_{products_list.index(product)}.png")
             products_list_names.append(prod.name)
+            products_file_names.append(f"prices_{products_list.index(product)}.png")
             
 
         
-    if today == 2:
+    if today == 3:
         send_mail(sender=os.getenv("SENDER_EMAIL"), 
                       password=os.getenv("PASSMAIL"), 
                       receiver=user1.email, 
                       subject="Evolución de los precios de tus productos",
                       product_names=products_list_names,
+                      products_file_names=products_file_names,
                       weekly=True
                       )
 

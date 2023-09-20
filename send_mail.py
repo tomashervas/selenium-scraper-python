@@ -5,7 +5,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 
    
-def send_mail(sender, password, receiver, subject, product_name = "", product_img = "", product_price = 0, product_names = [], weekly=False):
+def send_mail(sender, password, receiver, subject, product_name = "", product_img = "", product_price = 0, product_names = [], products_file_names = [], weekly=False):
     """
     Sends an email using the provided sender, password, receiver, subject, and body.
     
@@ -17,6 +17,8 @@ def send_mail(sender, password, receiver, subject, product_name = "", product_im
         product_name (str, optional): The name of the product.
         product_img (str, optional): The URL of the product's image.
         product_price (float, optional): The price of the product.
+        product_names (str[], optional): List of product_names.
+        products_file_names (str[] , optional): List of product_file_names.
         weekly (bool, optional): Whether to be a weekly email or not. Defaults to False.
         
     """ 
@@ -36,10 +38,12 @@ def send_mail(sender, password, receiver, subject, product_name = "", product_im
         mail_body = f"""
                         <html>
                             <body style="margin:0;padding:0;">
-                                <p style="font-size: large;">Esta es la evolucion de los precios de tus productos</p>"""
+                                <p style="font-size: large;">Esta es la evolución de los precios de tus productos:</p>"""
                                 
 
-        img_files = [f for f in os.listdir("images") if os.path.isfile(os.path.join("images", f))]
+        # img_files = [f for f in os.listdir("images") if os.path.isfile(os.path.join("images", f))]
+        # img_files.sort()
+        img_files = products_file_names
 
         for img_file in img_files:
             with open(f'images/{img_file}', 'rb') as file:
@@ -47,7 +51,7 @@ def send_mail(sender, password, receiver, subject, product_name = "", product_im
             img_chart = MIMEImage(img_data, name=img_file)
             img_chart.add_header('Content-ID', f'<{img_file}>')
             mail_body += f"""
-                            <h3 style="font-weight: bold;">{product_names[img_files.index(img_file)]}</h3>
+                            <h2 style="font-weight: bold;">{product_names[img_files.index(img_file)]}</h2>
                             <img src="cid:{img_file}"><br>"""
             
             em.attach(img_chart)
@@ -56,9 +60,6 @@ def send_mail(sender, password, receiver, subject, product_name = "", product_im
                             </body>
                         </html>
                     """
-
-        em.attach(MIMEText(mail_body, 'html'))
-
     else:
         mail_body = f"""
                         <html>
@@ -74,8 +75,7 @@ def send_mail(sender, password, receiver, subject, product_name = "", product_im
                         </html>
                     """
 
-        em.attach(img_chart)
-
+    em.attach(MIMEText(mail_body, 'html'))
     try:
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
