@@ -1,11 +1,12 @@
 import os
+import logging
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.image import MIMEImage
 
    
-def send_mail(sender, password, receiver, subject, product_name = "", product_img = "", product_price = 0, product_names = [], products_file_names = [], weekly=False):
+def send_mail(sender, password, receiver, subject, product_name = "", product_img = "", product_price = 0, product_url = "", product_names = [], products_file_names = [], weekly=False):
     """
     Sends an email using the provided sender, password, receiver, subject, and body.
     
@@ -17,6 +18,7 @@ def send_mail(sender, password, receiver, subject, product_name = "", product_im
         product_name (str, optional): The name of the product.
         product_img (str, optional): The URL of the product's image.
         product_price (float, optional): The price of the product.
+        product_url (str, optional): The URL of the product.
         product_names (str[], optional): List of product_names.
         products_file_names (str[] , optional): List of product_file_names.
         weekly (bool, optional): Whether to be a weekly email or not. Defaults to False.
@@ -70,7 +72,7 @@ def send_mail(sender, password, receiver, subject, product_name = "", product_im
                                 <p style="font-size: large;">ha bajado a: </p>
                                 <h1 style="color: crimson; text-align: center;">{product_price}€</h1>
                                 <br>
-                                <p style="font-size: large; text-align: right; margin-top: 16px;"><a href="" style="text-decoration: none; margin-top: 16px; padding: 8px 16px; background-color: lightslategray; border-radius: 8px;">Ir a la tienda -> </a></p>
+                                <p style="font-size: large; text-align: right; margin-top: 16px;"><a href="{product_url}" style="text-decoration: none; margin-top: 16px; padding: 8px 16px; background-color: lightslategray; color: white; border-radius: 8px;">Ir a la tienda -> </a></p>
                             </body>
                         </html>
                     """
@@ -81,9 +83,10 @@ def send_mail(sender, password, receiver, subject, product_name = "", product_im
         server.starttls()
         server.login(sender_email, sender_password)
         server.sendmail(sender_email, receiver_email, em.as_string())
+        logging.info(f"Correo electrónico enviado correctamente a {receiver_email}")
         print(f"Correo electrónico enviado correctamente a {receiver_email}")
     except Exception as e:
-        print(f"No se pudo enviar el correo: {str(e)}")
+        logging.info(f"No se pudo enviar el correo: {str(e)}")
         quit()
 
     server.quit()

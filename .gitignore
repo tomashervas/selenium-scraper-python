@@ -3,3 +3,5 @@
 dev.db
 plantilla_mail.html
 /images
+app.log
+/prisma

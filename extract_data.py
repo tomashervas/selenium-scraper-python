@@ -4,12 +4,11 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
+import logging
 
 count = 0
 def extract_product(url):
     global count
-    url = url
-    # Configurar opciones de Chrome (puedes personalizarlas según tus necesidades)
     options = webdriver.ChromeOptions()
 
     #chrome_options.add_argument("--headless")
@@ -20,7 +19,6 @@ def extract_product(url):
     driver.set_window_size(1920, 1080)
 
     try:
-        # Navegar a la URL
         driver.get(url)
         # driver.maximize_window()
         # time.sleep(2)
@@ -47,7 +45,7 @@ def extract_product(url):
         return {"title": title, "price": price_validated, "img": img, "product_id": product_id}
     
     except Exception as e:
-        print(f"Error en el inteno {count}")
+        logging.error(f"Error en el inteno {count}")
 
         if count < 3:
             count += 1

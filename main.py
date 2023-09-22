@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import logging
 import os
 import pandas as pd
 import plotly.express as px
@@ -14,6 +15,9 @@ from send_mail import send_mail
 
 load_dotenv()
 
+logging.basicConfig(filename='app.log', level=logging.INFO)
+logging.info(f'\nStarting app... {datetime.datetime.now().isoformat()}\n')
+
 sheet_base_url = "https://docs.google.com/spreadsheets/d/"
 sheet_id = os.getenv("SHEET_ID")
 
@@ -23,7 +27,7 @@ try:
     # random.shuffle(urls_list)
 
 except Exception as e:
-    print(f'No se pudo leer la hoja de datos: {str(e)}')
+    logging.error(f'No se pudo leer la hoja de datos: {str(e)}')
 
 async def main():
     products_list_names = []
@@ -34,12 +38,13 @@ async def main():
     # products_list = [
     #     {"product_id": "B00CWB45T2", "price": 45},
     #     {"product_id": "B07VDLG8LR", "price": 63.5},
-    #     {"product_id": "B0713WPGLL", "price": 102.0},
+    #     {"product_id": "B0713WPGLL", "price": 101.0},
     # ]
 
     for url in urls_list:
         product = extract_product(url)
         products_list.append(product)
+        logging.info(product)
         print(product)
 
     db = Prisma()
@@ -50,21 +55,21 @@ async def main():
     })
     
     if user1 is not None:
-        print(f'found user: {user1.name}')
+        logging.info(f'found user: {user1.name}')
     else:
         user1 = await db.user.create({
             "name": os.getenv("USER_NAME"),
             "email": os.getenv("SENDER_EMAIL")
         })
-        print(f'created user: {user1.model_dump_json(indent=2)}')
+        logging.info(f'created user: {user1.model_dump_json(indent=2)}')
 
-    for product in products_list:
+    for index, product in enumerate(products_list):
         prod = await db.product.find_unique(where={
             "shopId": product["product_id"]
         },include={"prices": True} )
 
         if prod: 
-            print(f'ya estaba el producto con shopId {prod.shopId}')
+            logging.info(f'ya estaba el producto con shopId {prod.shopId}')
             new_price = await db.priceproduct.create(
                 data={
                     "price": product["price"],
@@ -74,7 +79,7 @@ async def main():
                         }
                     }
                 })
-            print(f'created price: {new_price.price}, date: {time.strftime("%d-%m-%Y %H:%M", new_price.created_at.timetuple())}')
+            logging.info(f'created price: {new_price.price}, date: {time.strftime("%d-%m-%Y %H:%M", new_price.created_at.timetuple())}')
         
         else:
             new_product = await db.product.create({
@@ -92,10 +97,11 @@ async def main():
                     }]
                 }
             })
+            logging.info(f'created product: {new_product.model_dump_json(indent=2)}')
             print(f'created product: {new_product.model_dump_json(indent=2)}')
 
         last_price = prod.prices[-1] if prod.prices else 0
-        print(f'last price of {prod.name}: {last_price.price} date: {time.strftime("%d-%m-%Y %H:%M", last_price.created_at.timetuple())}')
+        logging.info(f'last price of {prod.name}: {last_price.price} date: {time.strftime("%d-%m-%Y %H:%M", last_price.created_at.timetuple())}')
 
         if product["price"] < last_price.price:
             send_mail(sender=os.getenv("SENDER_EMAIL"), 
@@ -105,12 +111,13 @@ async def main():
                       product_name=prod.name,
                       product_img=prod.imgUrl,
                       product_price=product["price"],
+                      product_url=urls_list[index],
                       )
-            print(f'El precio del producto {prod.name} ha bajado de {last_price.price} a {product["price"]}')
+            logging.info(f'El precio del producto {prod.name} ha bajado de {last_price.price} a {product["price"]}')
         else:
-            print (f'El precio del producto {prod.name} no ha bajado')
+            logging.info (f'El precio del producto {prod.name} no ha bajado')
 
-        if today == 3:
+        if today == 1:
             price_list = []
             date_list = []
             for price in prod.prices:
@@ -121,9 +128,8 @@ async def main():
         
             data = pd.DataFrame({'x': date_list,
                         'y': price_list})
-            # print(data)
+            # logging.info(data)
             yrange = [min(price_list) - (min(price_list) * 0.2), max(price_list) + (max(price_list) * 0.2)]
-            print("yrange",yrange)
 
             fig = px.line(data_frame=data,
                         x = 'x',
@@ -155,7 +161,7 @@ async def main():
             
 
         
-    if today == 3:
+    if today == 1:
         send_mail(sender=os.getenv("SENDER_EMAIL"), 
                       password=os.getenv("PASSMAIL"), 
                       receiver=user1.email, 
